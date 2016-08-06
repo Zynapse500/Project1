@@ -132,18 +132,7 @@ int main()
 
 	
 
-	//Transformation
-	glm::mat4 model;
-	model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-
-	glm::mat4 view;
-	view = glm::translate(view, glm::vec3(0.0, 0.0, -3.0));
-
-	glm::mat4 projection;
-	projection = glm::perspective(glm::radians(45.0f), (float)screenWidth / screenHeight, 0.1f, 100.0f);
-
-
-
+	
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -222,17 +211,37 @@ int main()
 
 	float elapsedTime = 0;
 
+
+
+
+	//Transformation
+	glm::mat4 model;
+	model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+
+	glm::mat4 view;
+	view = glm::translate(view, glm::vec3(0.0, 0.0, -3.0));
+
+	glm::mat4 projection;
+	projection = glm::perspective(glm::radians(45.0f), (GLfloat)screenWidth / (GLfloat)screenHeight, 0.1f, 100.0f);
+	
+	GLuint modelLoc = glGetUniformLocation(ourShader.Program, "model");
+	GLuint viewLoc = glGetUniformLocation(ourShader.Program, "view");
+	GLuint projectionLoc = glGetUniformLocation(ourShader.Program, "projection");
+
+
+
 	//Game loop
 	while(!glfwWindowShouldClose(window))
 	{
 		float delta = getDeltaTime();
 		elapsedTime += delta;
+		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
 		//Check and call events
 		glfwPollEvents();
 
 		//Rendering commands here
-		glClearColor(0.2,0.3,0.3,1.0f);
+		glClearColor(0.2f,0.3f,0.3f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//Activate the shader
@@ -267,19 +276,21 @@ int main()
 
 		glUniform1f(glGetUniformLocation(ourShader.Program, "mixValue"), mixValue);
 
-		//transfor matrices
+		//transform matrices
 		glm::mat4 model;
 		model = glm::rotate(model, glm::radians(elapsedTime * 50.0f), glm::vec3(0.5,1.0,0.0));
 
+		glm::mat4 view;
+		view = glm::translate(view, glm::vec3(0.0f, 0.0f, -(sin(elapsedTime) + 1.5) * 3));
+		view = glm::rotate(view, glm::radians(cos(elapsedTime) * 90.0f), glm::vec3(0.0f,0.0f,1.0f));
+		
+
+
 		//transform the object
-		GLuint modelLoc = glGetUniformLocation(ourShader.Program, "model");
-		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-		GLuint viewLoc = glGetUniformLocation(ourShader.Program, "view");
+		
+		
+		
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-		GLuint projectionLoc = glGetUniformLocation(ourShader.Program, "projection");
-		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
 		//draw the object
 		glBindVertexArray(VAO);
@@ -288,8 +299,11 @@ int main()
 			glm::mat4 model;
 			model = glm::translate(model, cubePositions[i]);
 			GLfloat angle = 20.0f * i;
+			 if(i % 2 == 0)  // Every 3rd iteration (including the first) we set the angle using GLFW's time function.
+       			angle += glfwGetTime() * 25.0f;
 			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+			//glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 		}
