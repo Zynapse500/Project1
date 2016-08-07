@@ -437,7 +437,7 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	
 	zoom = yoffset + 1;
-	printf(zoom ? "verdadero\n" : "falso\n");
+	printf(zoom ? "sant\n" : "falskt\n");
 
 }
 
