@@ -8,6 +8,7 @@
 
 //My includes
 #include "Shader.h"
+#include "Camera.h"
 
 //OpenGL includes
 //GLEW
@@ -40,6 +41,9 @@ GLfloat yaw = 0, pitch = 0;
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 bool zoom = false;
+
+
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
 
 float mixValue = 0.0;
@@ -259,10 +263,10 @@ int main()
 	model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
 	
-	view = glm::translate(view, glm::vec3(0.0, 0.0, -3.0));
+	view = camera.GetViewMatrix();
 
 	
-	projection = glm::perspective(glm::radians(fov), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 100.0f);
+	projection = glm::perspective(glm::radians(camera.Fov), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 100.0f);
 	
 	GLuint modelLoc = glGetUniformLocation(ourShader.Program, "model");
 	GLuint viewLoc = glGetUniformLocation(ourShader.Program, "view");
@@ -324,7 +328,7 @@ int main()
 
 		//transform the object
 		glm::mat4 view;
-		view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+		view = camera.GetViewMatrix();
 		
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
@@ -411,34 +415,17 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 
 	GLfloat xoffset = xpos - lastX;
 	GLfloat yoffset = lastY - ypos;
+
 	lastX = xpos;
 	lastY = ypos;
 
-	GLfloat sensitivity = 0.05f;
-	xoffset *= sensitivity;
-	yoffset *= sensitivity;
-
-	yaw = std::fmod((yaw + xoffset), (GLfloat)360.0f);
-	pitch += yoffset;
-
-	if(pitch > 89.0f)
-		pitch = 89.0f;
-	if(pitch < -89.0f)
-		pitch = -89.0f;
-
-	glm::vec3 front;
-	front.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
-	front.y = sin(glm::radians(pitch));
-	front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
-	cameraFront = glm::normalize(front);
+	camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	
 	zoom = yoffset + 1;
 	printf(zoom ? "sant\n" : "falskt\n");
-
 }
 
 
@@ -446,24 +433,29 @@ void do_movement()
 {
 	GLfloat cameraSpeed;
 	if(keys[GLFW_KEY_LEFT_SHIFT])
-		cameraSpeed = 15.0f * deltaTime;
+		camera.MovementSpeed = 15;
 	else
-		cameraSpeed = 5.0f * deltaTime;
+		camera.MovementSpeed = 5.0f;
 
 	if(keys[GLFW_KEY_W])
-		cameraPos += cameraSpeed * cameraFront;
+		camera.ProcessKeyboard(FORWARD, deltaTime);
 	if(keys[GLFW_KEY_S])
-		cameraPos -= cameraSpeed * cameraFront;
+		camera.ProcessKeyboard(BACKWARD, deltaTime);
 	if(keys[GLFW_KEY_A])
-		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+		camera.ProcessKeyboard(LEFT, deltaTime);
 	if(keys[GLFW_KEY_D])
-		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+		camera.ProcessKeyboard(RIGHT, deltaTime);
+
+	if(keys[GLFW_KEY_E])
+		camera.ProcessKeyboard(UP, deltaTime);
+	if(keys[GLFW_KEY_Q])
+		camera.ProcessKeyboard(DOWN, deltaTime);
 
 	if(zoom)
-		fov = 15.0f;
+		camera.Fov = 15.0f;
 	else
-		fov = 45.0f;
-	projection = glm::perspective(glm::radians(fov), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 100.0f);
+		camera.Fov = 45.0f;
+	projection = glm::perspective(glm::radians(camera.Fov), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 100.0f);
 }
 
 
