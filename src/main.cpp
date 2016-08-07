@@ -23,13 +23,28 @@
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 
+void mouse_callback(GLFWwindow* window, double xPos, double yPos);
+bool firstMouse = true;
+GLfloat lastX = 400, lastY = 300;
+GLfloat yaw = 0, pitch = 0;
+
 float mixValue = 0.0;
 bool open = false;
 
 
-//delta variables
-float getDeltaTime();
+//deltaTime variables
+void updateDeltaTime();
 float timeSinceLastFrame;
+float deltaTime;
+
+
+glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f,  3.0f);
+glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
+
+bool keys[1024];
+
+void do_movement();
 
 int main()
 {
@@ -52,7 +67,15 @@ int main()
 	glfwMakeContextCurrent(window);
 
 	glfwSetKeyCallback(window, key_callback);
+
+	glfwSetCursorPosCallback(window, mouse_callback);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
 	glfwSwapInterval(0);
+
+	
+
+
 
 	timeSinceLastFrame = glfwGetTime();
 	
@@ -233,12 +256,13 @@ int main()
 	//Game loop
 	while(!glfwWindowShouldClose(window))
 	{
-		float delta = getDeltaTime();
-		elapsedTime += delta;
+		updateDeltaTime();
+		elapsedTime += deltaTime;
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
 		//Check and call events
 		glfwPollEvents();
+		do_movement();
 
 		//Rendering commands here
 		glClearColor(0.2f,0.3f,0.3f,1.0f);
@@ -261,11 +285,11 @@ int main()
 		//Set the mix value for the textures
 		if(open)
 		{
-			mixValue += delta;
+			mixValue += deltaTime;
 		}
 		else
 		{
-			mixValue -= delta;
+			mixValue -= deltaTime;
 		}
 		if(mixValue >= 0.5)
 			mixValue = 0.5;
@@ -280,19 +304,21 @@ int main()
 		glm::mat4 model;
 		model = glm::rotate(model, glm::radians(elapsedTime * 50.0f), glm::vec3(0.5,1.0,0.0));
 
-		glm::mat4 view;
-		view = glm::translate(view, glm::vec3(0.0f, 0.0f, -(sin(elapsedTime) + 1.5) * 3));
-		view = glm::rotate(view, glm::radians(cos(elapsedTime) * 90.0f), glm::vec3(0.0f,0.0f,1.0f));
-		
-
 
 		//transform the object
-		
-		
+		glm::mat4 view;
+		view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 		
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
-		//draw the object
+
+
+		//#####################################
+		//#				DRAWING 			  #
+		//#####################################
+
+
+
 		glBindVertexArray(VAO);
 		for(GLuint i = 0; i < 10; i++)
 		{
@@ -345,34 +371,77 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		}
 	}
 
-	
+	if(action == GLFW_PRESS)
+	{
+		keys[key] = true;
+	}else if(action == GLFW_RELEASE)
+	{
+		keys[key] = false;
+	}
 }
 
-std::string getFromFile(std::string path)
-{
-	std::string ret;
-	std::ifstream ifs(path.c_str());
-	if(ifs)
-	{
-		std::string line;
-		while(getline(ifs, line))
-		{
-			ret = ret + line + "\n";
-		}
-		ifs.close();
-	}
-	else
-	{
-		return "";
-	}
-	return ret;
-}	
 
-float getDeltaTime()
+void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+{
+	if(firstMouse)
+	{
+		lastX = xpos;
+		lastY = ypos;
+		yaw = -90.0f;
+		firstMouse = false;
+	}
+
+
+	GLfloat xoffset = xpos - lastX;
+	GLfloat yoffset = lastY - ypos;
+	lastX = xpos;
+	lastY = ypos;
+
+	GLfloat sensitivity = 0.05f;
+	xoffset *= sensitivity;
+	yoffset *= sensitivity;
+
+	yaw = std::fmod((yaw + xoffset), (GLfloat)360.0f);
+	pitch += yoffset;
+
+	if(pitch > 89.0f)
+		pitch = 89.0f;
+	if(pitch < -89.0f)
+		pitch = -89.0f;
+
+	printf("yaw: %f, pitch: %f\n", yaw, pitch);
+
+	glm::vec3 front;
+	front.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
+	front.y = sin(glm::radians(pitch));
+	front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
+	cameraFront = glm::normalize(front);
+}
+
+
+void do_movement()
+{
+	GLfloat cameraSpeed;
+	if(keys[GLFW_KEY_LEFT_SHIFT])
+		cameraSpeed = 15.0f * deltaTime;
+	else
+		cameraSpeed = 5.0f * deltaTime;
+
+	if(keys[GLFW_KEY_W])
+		cameraPos += cameraSpeed * cameraFront;
+	if(keys[GLFW_KEY_S])
+		cameraPos -= cameraSpeed * cameraFront;
+	if(keys[GLFW_KEY_A])
+		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+	if(keys[GLFW_KEY_D])
+		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+}
+
+
+
+void updateDeltaTime()
 {
 	float currentTime = glfwGetTime();
-	float elapsedTime = currentTime - timeSinceLastFrame;
+	deltaTime = currentTime - timeSinceLastFrame;
 	timeSinceLastFrame = currentTime;
-
-	return elapsedTime;
 }
