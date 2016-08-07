@@ -21,12 +21,26 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+
+
+//window variables
+int SCREEN_WIDTH, SCREEN_HEIGHT;
+
+//Matrices
+glm::mat4 model;
+glm::mat4 view;
+glm::mat4 projection;
+
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode);
 
 void mouse_callback(GLFWwindow* window, double xPos, double yPos);
 bool firstMouse = true;
 GLfloat lastX = 400, lastY = 300;
 GLfloat yaw = 0, pitch = 0;
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+bool zoom = false;
+
 
 float mixValue = 0.0;
 bool open = false;
@@ -41,6 +55,7 @@ float deltaTime;
 glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f,  3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
+GLfloat fov = 45;
 
 bool keys[1024];
 
@@ -71,6 +86,8 @@ int main()
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+	glfwSetScrollCallback(window, scroll_callback);
+
 	glfwSwapInterval(0);
 
 	
@@ -86,10 +103,10 @@ int main()
 		return -1;
 	}
 
-	int screenWidth, screenHeight;
-	glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
+	
+	glfwGetFramebufferSize(window, &SCREEN_WIDTH, &SCREEN_HEIGHT);
 
-	glViewport(0, 0, screenWidth, screenHeight);
+	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	//Shader
 	Shader ourShader("shaders/vertexShader.vert", "shaders/fragmentShader.frag");
@@ -238,14 +255,14 @@ int main()
 
 
 	//Transformation
-	glm::mat4 model;
+	
 	model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 
-	glm::mat4 view;
+	
 	view = glm::translate(view, glm::vec3(0.0, 0.0, -3.0));
 
-	glm::mat4 projection;
-	projection = glm::perspective(glm::radians(45.0f), (GLfloat)screenWidth / (GLfloat)screenHeight, 0.1f, 100.0f);
+	
+	projection = glm::perspective(glm::radians(fov), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 100.0f);
 	
 	GLuint modelLoc = glGetUniformLocation(ourShader.Program, "model");
 	GLuint viewLoc = glGetUniformLocation(ourShader.Program, "view");
@@ -409,13 +426,19 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 	if(pitch < -89.0f)
 		pitch = -89.0f;
 
-	printf("yaw: %f, pitch: %f\n", yaw, pitch);
-
 	glm::vec3 front;
 	front.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
 	front.y = sin(glm::radians(pitch));
 	front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
 	cameraFront = glm::normalize(front);
+}
+
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	
+	zoom = yoffset + 1;
+	printf(zoom ? "verdadero\n" : "falso\n");
+
 }
 
 
@@ -435,6 +458,12 @@ void do_movement()
 		cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 	if(keys[GLFW_KEY_D])
 		cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+
+	if(zoom)
+		fov = 15.0f;
+	else
+		fov = 45.0f;
+	projection = glm::perspective(glm::radians(fov), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 100.0f);
 }
 
 
